@@ -214,11 +214,14 @@ Post.prototype.getTen=function(name,page,callback){
         query.name=name;
       }
       //使用count返回特定查询的文档数total
-      collection.count(query,function(err,total){
-        collection.find(query,{
-          sikp:(page-1)*10,
-          limit:10
-      }).sort({time:-1}).toArray(function(err,docs){
+    collection.count(query,function(err,total){
+
+      var skip=(page-1)*10;
+      var limit=10;
+      collection.find(
+        query,
+        {skip:skip,limit:limit}
+      ).sort({time:-1}).toArray(function(err,docs){
         mongodb.close();
         if(err){
           return callback(err);
@@ -227,8 +230,9 @@ Post.prototype.getTen=function(name,page,callback){
           doc.post=markdown.toHTML(doc.post);
         });
         return callback(null,docs,total);
-      });
-    });
+      })
+
+    })
   });
 });
 }

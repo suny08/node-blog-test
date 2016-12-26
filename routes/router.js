@@ -173,12 +173,13 @@ module.exports=function(app){
     }
     var userOb=new User(userInfo);
     var postOb=new Post(null,null,null);
+    var page=req.query.p?parseInt(req.query.p):1;
     userOb.get(req.params.name,function(err,user){
       if(!user){
         req.flash('error','用户不存在');
         return res.redirect('/');
       }
-      postOb.getTen(user.name,function(err,posts,total){
+      postOb.getTen(null,page,function(err,posts,total){
         if(err){
           req.flash('error',err);
           return res.redirect('/');
@@ -194,6 +195,7 @@ module.exports=function(app){
           page:page,
           total:total
         };
+        console.log(info);
         res.render('user',info);
       });
     });
