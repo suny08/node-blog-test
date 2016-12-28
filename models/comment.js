@@ -4,7 +4,7 @@ function Comment(name,day,title,comment){
   this.name=name;
   this.day=day;
   this.title=title;
-  this.comment=commnet;
+  this.comment=comment;
 }
 
 module.exports=Comment;
@@ -27,10 +27,10 @@ Comment.prototype.save=function(callback){
       }
       var query={
         "name":name,
-        'time.day':day,
-        'title':title
-      }
-      collection.update(query,{"comments":commnet},function(err,reqult){
+        "time.day":day,
+        "title":title
+      };
+      collection.update(query,{$push:{"comments":commnet}},function(err){
         mongodb.close();
         if(err){
           return callback(err);
@@ -40,4 +40,4 @@ Comment.prototype.save=function(callback){
       });
     });
   });
-}
+};

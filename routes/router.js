@@ -12,7 +12,7 @@ module.exports = function (app) {
         // 判断是否是第一页
         var page = req.query.p ? parseInt(req.query.p) : 1;
 
-        var postOb = new Post(null, null, null);
+        var postOb = new Post(null, null, null,null);
         postOb.getTen(null, page, function (err, posts, total) {
             if (err) posts = [];
             var info = {
@@ -132,7 +132,8 @@ module.exports = function (app) {
     app.post('/post', checkLogin);
     app.post('/post', function (req, res) {
         var currentUser = req.session.user;
-        var postOb = new Post(currentUser.name, req.body.title, req.body.post);
+        var tags = [req.body.tag1, req.body.tag2, req.body.tag3];
+        var postOb = new Post(currentUser.name, req.body.title, tags, req.body.post);
         postOb.save(function (err) {
             if (err) {
                 req.flash('error', err);
@@ -164,7 +165,7 @@ module.exports = function (app) {
     app.post('/upload', upload.fields(uploadFile), afterUpload);
 
     app.get('/archive', function (req, res) {
-        var PostOb = new Post(null, null, null);
+        var PostOb = new Post(null, null, null,null);
         PostOb.getArchive(function (err, posts) {
             if (err) {
                 req.flash('error', err);
@@ -188,9 +189,9 @@ module.exports = function (app) {
             name: '',
             password: '',
             email: ''
-        }
+        };
         var userOb = new User(userInfo);
-        var postOb = new Post(null, null, null);
+        var postOb = new Post(null, null, null,null);
         var page = req.query.p ? parseInt(req.query.p) : 1;
         userOb.get(req.params.name, function (err, user) {
             if (!user) {
@@ -219,7 +220,7 @@ module.exports = function (app) {
         });
     });
     app.get('/u/:name/:day/:title', function (req, res) {
-        var postOb = new Post(null, null, null);
+        var postOb = new Post(null, null, null,null);
         var name = req.params.name;
         var day = req.params.day;
         var title = req.params.title;
@@ -248,20 +249,18 @@ module.exports = function (app) {
             time: time,
             content: req.body.content
         };
-        console.log(comment);
         var name = req.params.name;
         var day = req.params.day;
         var title = req.params.title;
         var newComment = new Comment(name, day, title, comment);
-        console.log(newComment);
-         newComment.save(function(err){
-           if(err){
-            req.flash('error',err);
-            return res.redirect('back');
-          }else{
-            req.flash('success','留言成功');
-            res.redirect('back');
-          }
+        newComment.save(function (err) {
+            if (err) {
+                req.flash('error', err);
+                return res.redirect('back');
+            } else {
+                req.flash('success', '留言成功');
+                res.redirect('back');
+            }
         })
     });
 
@@ -273,7 +272,7 @@ module.exports = function (app) {
         var name = currentUser.name;
         var day = req.params.day;
         var title = req.params.title;
-        var postOb = new Post(null, null, null);
+        var postOb = new Post(null, null, null,null);
         postOb.edit(name, day, title, function (err, post) {
             if (err) {
                 req.flash('error', err);
@@ -291,7 +290,7 @@ module.exports = function (app) {
     });
     app.post('/edit/:name/:day/:title', function (req, res) {
         var currentUser = req.session.user;
-        var postOb = new Post(null, null, null);
+        var postOb = new Post(null, null, null,null);
         var name = currentUser.name;
         var day = req.params.day;
         var title = req.params.title.toString();
@@ -314,7 +313,7 @@ module.exports = function (app) {
         var name = req.params.name;
         var day = req.params.day;
         var title = req.params.title;
-        var postOb = new Post(null, null, null);
+        var postOb = new Post(null, null, null,null);
         postOb.remove(name, day, title, function (err) {
             if (err) {
                 req.flash('error', err);
