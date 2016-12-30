@@ -12,7 +12,7 @@ module.exports = function (app) {
         // 判断是否是第一页
         var page = req.query.p ? parseInt(req.query.p) : 1;
 
-        var postOb = new Post(null, null, null,null);
+        var postOb = new Post(null, null, null, null);
         postOb.getTen(null, page, function (err, posts, total) {
             if (err) posts = [];
             var info = {
@@ -164,8 +164,9 @@ module.exports = function (app) {
     app.post('/upload', checkLogin);
     app.post('/upload', upload.fields(uploadFile), afterUpload);
 
+    // 存档
     app.get('/archive', function (req, res) {
-        var PostOb = new Post(null, null, null,null);
+        var PostOb = new Post(null, null, null, null);
         PostOb.getArchive(function (err, posts) {
             if (err) {
                 req.flash('error', err);
@@ -182,6 +183,41 @@ module.exports = function (app) {
         })
     });
 
+    //标签
+    app.get('/tags', function (req, res) {
+        var postOb = new Post(null, null, null, null);
+        postOb.getTags(function (err, posts) {
+            if (err) {
+                req.flash('error', err);
+            }
+            var info = {
+                title: '标签',
+                posts: posts,
+                user: req.session.user,
+                success: req.flash('success').toString(),
+                error: req.flash('error').toString()
+            };
+            res.render('tags', info);
+        })
+    });
+    app.get('/tags/:tag', function (req, res) {
+        var postOb = new Post(null, null, null, null);
+        postOb.getTag(req.params.tag,function(err,posts){
+            if(err){
+                req.flash('error',err);
+                return res.redirect('/');
+            }
+            var info = {
+                title: 'TAG：'+req.params.tag,
+                posts: posts,
+                user: req.session.user,
+                success: req.flash('success').toString(),
+                error: req.flash('error').toString()
+            };
+            res.render('tag', info);
+        })
+    });
+
     //文章列表
     app.get('/u/:name', function (req, res) {
         //检查用户是否存在
@@ -191,7 +227,7 @@ module.exports = function (app) {
             email: ''
         };
         var userOb = new User(userInfo);
-        var postOb = new Post(null, null, null,null);
+        var postOb = new Post(null, null, null, null);
         var page = req.query.p ? parseInt(req.query.p) : 1;
         userOb.get(req.params.name, function (err, user) {
             if (!user) {
@@ -220,7 +256,7 @@ module.exports = function (app) {
         });
     });
     app.get('/u/:name/:day/:title', function (req, res) {
-        var postOb = new Post(null, null, null,null);
+        var postOb = new Post(null, null, null, null);
         var name = req.params.name;
         var day = req.params.day;
         var title = req.params.title;
@@ -264,6 +300,14 @@ module.exports = function (app) {
         })
     });
 
+    //查找
+    app.get('/search',function(req,res){
+        var postOb=new Post(null,null,null,null);
+        postOb.search(req.params.keyword,function(err,posts){
+            
+        })
+    })
+
     // 更新文章
     app.get('/edit/:name/:day/:title', checkLogin);
     app.get('/edit/:name/:day/:title', checkOwn);
@@ -272,7 +316,7 @@ module.exports = function (app) {
         var name = currentUser.name;
         var day = req.params.day;
         var title = req.params.title;
-        var postOb = new Post(null, null, null,null);
+        var postOb = new Post(null, null, null, null);
         postOb.edit(name, day, title, function (err, post) {
             if (err) {
                 req.flash('error', err);
@@ -290,7 +334,7 @@ module.exports = function (app) {
     });
     app.post('/edit/:name/:day/:title', function (req, res) {
         var currentUser = req.session.user;
-        var postOb = new Post(null, null, null,null);
+        var postOb = new Post(null, null, null, null);
         var name = currentUser.name;
         var day = req.params.day;
         var title = req.params.title.toString();
@@ -313,7 +357,7 @@ module.exports = function (app) {
         var name = req.params.name;
         var day = req.params.day;
         var title = req.params.title;
-        var postOb = new Post(null, null, null,null);
+        var postOb = new Post(null, null, null, null);
         postOb.remove(name, day, title, function (err) {
             if (err) {
                 req.flash('error', err);

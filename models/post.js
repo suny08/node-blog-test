@@ -1,10 +1,11 @@
 var mongodb = require('./db');
 var markdown = require('markdown').markdown;
-function Post(name, title, tags,post) {
+function Post(name, title, tags, post) {
     this.name = name;
     this.title = title;
-    this.tags=tags;
+    this.tags = tags;
     this.post = post;
+    pv = 0;
 }
 
 module.exports = Post;
@@ -23,7 +24,7 @@ Post.prototype.save = function (callback) {
         name: this.name,
         title: this.title,
         time: time,
-        tags:this.tags,
+        tags: this.tags,
         post: this.post,
         comments: []
     };
@@ -97,17 +98,31 @@ Post.prototype.getOne = function (name, day, title, callback) {
                 "time.day": day,
                 "title": title
             }, function (err, doc) {
-                mongodb.close();
                 if (err) {
+                    mongodb.close();
                     return callback(err);
                 }
                 if (doc) {
+                    collection.update(
+                        {
+                            "name": name,
+                            "time.day":day,
+                            "title":title
+                        },
+                        {
+                            $inc:{"pv":1}
+                        },function(err){
+                            mongodb.close();
+                            if(err){
+                                return callback(err);
+                            }
+                        });
                     doc.post = markdown.toHTML(doc.post);
                     doc.comments.forEach(function (comment) {
                         comment.content = markdown.toHTML(comment.content);
                     })
                 }
-                callback(null, doc);
+                return callback(null, doc);
             });
         });
     });
@@ -239,8 +254,86 @@ Post.prototype.getTen = function (name, page, callback) {
 };
 
 // 返回所有文档的存档信息
-Post.prototype.getArchive=function(callback){
+Post.prototype.getArchive = function (callback) {
 //打开数据库
+    mongodb.open(function (err, db) {
+        if (err) {
+            mongodb.close();
+            return callback(err);
+        }
+        db.collection('posts', function (err, collection) {
+            if (err) {
+                mongodb.close();
+                return callbacke(err);
+            }
+            collection.find({}, {
+                "name": 1,
+                "title": 1,
+                "time": 1
+            }).sort({
+                time: -1
+            }).toArray(function (err, docs) {
+                mongodb.close();
+                if (err) {
+                    return callback(err);
+                }
+                callback(null, docs);
+            })
+        })
+    })
+};
+
+//返回标签
+Post.prototype.getTags = function (callback) {
+    console.log(111);
+    mongodb.open(function (err, db) {
+        if (err) {
+            mongodb.close();
+            return callback(err);
+        }
+        db.collection('posts', function (err, collection) {
+            if (err) {
+                mongodb.close();
+                return callback(err);
+            }
+            collection.distinct('tags', function (err, docs) {
+                mongodb.close();
+                if (err) {
+                    return callback(err);
+                }
+                return callback(null, docs);
+            })
+        })
+    })
+};
+
+//根据标签获取内容
+Post.prototype.getTag = function (tag, callback) {
+    mongodb.open(function (err, db) {
+        if (err) {
+            mongodb.close();
+            return callback(err);
+        }
+        db.collection('posts', function (err, collection) {
+            if (err) {
+                mongodb.close();
+                return callback(err);
+            }
+            collection.find(
+                {"tags": tag},
+                {"name": 1, "time": 1, "title": 1}).sort({time: -1}).toArray(function (err, docs) {
+                mongodb.close();
+                if (err) {
+                    return callback(err);
+                }
+                return callback(null, docs);
+            })
+        })
+    })
+};
+
+//查找
+Post.prototype.search=function(keyword,callback){
     mongodb.open(function(err,db){
         if(err){
             mongodb.close();
@@ -249,20 +342,19 @@ Post.prototype.getArchive=function(callback){
         db.collection('posts',function(err,collection){
             if(err){
                 mongodb.close();
-                return callbacke(err);
+                return callback(err);
             }
-            collection.find({},{
-                "name":1,
-                "title":1,
-                "time":1
-            }).sort({
-                time:-1
-            }).toArray(function (err,docs) {
+            var pattern=new RegExp(keyword,"i");
+            collection.find(
+                {"title":pattern},
+                {"name":1,"time":1,"title":1})
+                .sort({time:-1})
+                .toArray(function(err,docs){
                 mongodb.close();
                 if(err){
                     return callback(err);
                 }
-                callback(null,docs);
+                return callback(null,docs);
             })
         })
     })
