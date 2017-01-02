@@ -12,7 +12,7 @@ module.exports = function (app) {
         // 判断是否是第一页
         var page = req.query.p ? parseInt(req.query.p) : 1;
 
-        var postOb = new Post(null, null, null, null);
+        var postOb = new Post(null, null, null, null, null);
         postOb.getTen(null, page, function (err, posts, total) {
             if (err) posts = [];
             var info = {
@@ -133,7 +133,7 @@ module.exports = function (app) {
     app.post('/post', function (req, res) {
         var currentUser = req.session.user;
         var tags = [req.body.tag1, req.body.tag2, req.body.tag3];
-        var postOb = new Post(currentUser.name, req.body.title, tags, req.body.post);
+        var postOb = new Post(currentUser.name, currentUser.head, req.body.title, tags, req.body.post);
         postOb.save(function (err) {
             if (err) {
                 req.flash('error', err);
@@ -166,7 +166,7 @@ module.exports = function (app) {
 
     // 存档
     app.get('/archive', function (req, res) {
-        var PostOb = new Post(null, null, null, null);
+        var PostOb = new Post(null, null, null, null, null);
         PostOb.getArchive(function (err, posts) {
             if (err) {
                 req.flash('error', err);
@@ -185,7 +185,7 @@ module.exports = function (app) {
 
     //标签
     app.get('/tags', function (req, res) {
-        var postOb = new Post(null, null, null, null);
+        var postOb = new Post(null, null, null, null, null);
         postOb.getTags(function (err, posts) {
             if (err) {
                 req.flash('error', err);
@@ -201,14 +201,14 @@ module.exports = function (app) {
         })
     });
     app.get('/tags/:tag', function (req, res) {
-        var postOb = new Post(null, null, null, null);
-        postOb.getTag(req.params.tag,function(err,posts){
-            if(err){
-                req.flash('error',err);
+        var postOb = new Post(null, null, null, null, null);
+        postOb.getTag(req.params.tag, function (err, posts) {
+            if (err) {
+                req.flash('error', err);
                 return res.redirect('/');
             }
             var info = {
-                title: 'TAG：'+req.params.tag,
+                title: 'TAG：' + req.params.tag,
                 posts: posts,
                 user: req.session.user,
                 success: req.flash('success').toString(),
@@ -227,14 +227,14 @@ module.exports = function (app) {
             email: ''
         };
         var userOb = new User(userInfo);
-        var postOb = new Post(null, null, null, null);
+        var postOb = new Post(null, null, null, null, null);
         var page = req.query.p ? parseInt(req.query.p) : 1;
         userOb.get(req.params.name, function (err, user) {
             if (!user) {
                 req.flash('error', '用户不存在');
                 return res.redirect('/');
             }
-            postOb.getTen(null, page, function (err, posts, total) {
+            postOb.getTen(req.params.name, page, function (err, posts, total) {
                 if (err) {
                     req.flash('error', err);
                     return res.redirect('/');
@@ -250,13 +250,12 @@ module.exports = function (app) {
                     page: page,
                     total: total
                 };
-                console.log(info);
                 res.render('user', info);
             });
         });
     });
     app.get('/u/:name/:day/:title', function (req, res) {
-        var postOb = new Post(null, null, null, null);
+        var postOb = new Post(null, null, null, null, null);
         var name = req.params.name;
         var day = req.params.day;
         var title = req.params.title;
@@ -271,18 +270,22 @@ module.exports = function (app) {
                 user: req.session.user,
                 success: req.flash('success').toString(),
                 error: req.flash('error').toString()
-            }
+            };
             res.render('article', info);
         })
     });
     app.post('/u/:name/:day/:title', function (req, res) {
         var date = new Date();
         var time = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + " " + date.getHours() + ":" + (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes());
+        var md5 = crypto.createHash('md5');
+        var email_MD5 = md5.update(req.body.email.toLocaleLowerCase()).digest('hex');
+        var head = "http://www.gravatar.com/avatar/" + email_MD5 + "?s=48";
         var comment = {
             name: req.body.name,
             email: req.body.email,
             website: req.body.website,
             time: time,
+            head: head,
             content: req.body.content
         };
         var name = req.params.name;
@@ -301,11 +304,33 @@ module.exports = function (app) {
     });
 
     //查找
-    app.get('/search',function(req,res){
-        var postOb=new Post(null,null,null,null);
-        postOb.search(req.params.keyword,function(err,posts){
-            
-        })
+    app.get('/search', function (req, res) {
+        var postOb = new Post(null, null, null, null, null);
+        postOb.search(req.params.keyword, function (err, posts) {
+            if (err) {
+                req.flash('error', err);
+                return res.redirect('/');
+            }
+            var info = {
+                title: "SEARCH:" + req.query.keyword,
+                posts: posts,
+                user: req.session.user,
+                success: req.flash('success').toString(),
+                error: req.flash('error').toString()
+            };
+            res.render('search', info);
+        });
+    });
+
+    // 友情链接
+    app.get('/links', function (req, res) {
+        var info = {
+            title: '友情链接',
+            user: req.session.user,
+            success: req.flash('success').toString(),
+            error: req.flash('error').toString()
+        }
+        res.render('links', info);
     })
 
     // 更新文章
@@ -316,7 +341,7 @@ module.exports = function (app) {
         var name = currentUser.name;
         var day = req.params.day;
         var title = req.params.title;
-        var postOb = new Post(null, null, null, null);
+        var postOb = new Post(null, null, null, null, null);
         postOb.edit(name, day, title, function (err, post) {
             if (err) {
                 req.flash('error', err);
@@ -334,7 +359,7 @@ module.exports = function (app) {
     });
     app.post('/edit/:name/:day/:title', function (req, res) {
         var currentUser = req.session.user;
-        var postOb = new Post(null, null, null, null);
+        var postOb = new Post(null, null, null, null, null);
         var name = currentUser.name;
         var day = req.params.day;
         var title = req.params.title.toString();
@@ -357,7 +382,7 @@ module.exports = function (app) {
         var name = req.params.name;
         var day = req.params.day;
         var title = req.params.title;
-        var postOb = new Post(null, null, null, null);
+        var postOb = new Post(null, null, null, null, null);
         postOb.remove(name, day, title, function (err) {
             if (err) {
                 req.flash('error', err);
@@ -368,6 +393,32 @@ module.exports = function (app) {
             }
         })
     });
+
+    // 转载
+    app.get('/reprint/:name/:day/:title', checkLogin);
+    app.get('/reprint/:name/:day/:title', function (req, res) {
+        var postOb = new Post(null, null, null, null, null);
+        postOb.edit(req.params.name, req.params.day, req.params.title, function (err, post) {
+            if (err) {
+                req.flash('error', err);
+                return res.redirect(back);
+            }
+            var currentUser = req.session.user;
+            var reprint_from = {name: post.name, day: post.time.day, title: post.title};
+            var reprint_to = {name: currentUser.name, head: currentUser.head};
+            postOb.reprint(reprint_from, reprint_to, function (err, post) {
+                if (err) {
+                    req.flash('error', err);
+                    return res.redirect('back');
+                }
+                req.flash('success', '转载成功');
+                console.log(post.name);
+                var url = encodeURI('/u/' + post.name + '/' + post.time.day + '/' + post.title);
+                return res.redirect(url);
+            })
+        })
+    });
+
     // 退出登录
     app.get('/logout', checkLogin);
     app.get('/logout', function (req, res) {
@@ -375,6 +426,10 @@ module.exports = function (app) {
         req.flash('success', '登出成功');
         return res.redirect('/');
     });
+
+    app.use(function (req, res) {
+        res.render("404");
+    })
 };
 
 // 检测是否登录

@@ -1,10 +1,11 @@
 var mongodb = require('./db');
 var markdown = require('markdown').markdown;
-function Post(name, title, tags, post) {
+function Post(name, head, title, tags, post) {
     this.name = name;
     this.title = title;
     this.tags = tags;
     this.post = post;
+    this.head = head;
     pv = 0;
 }
 
@@ -22,11 +23,13 @@ Post.prototype.save = function (callback) {
     };
     var post = {
         name: this.name,
+        head: this.head,
         title: this.title,
         time: time,
         tags: this.tags,
         post: this.post,
-        comments: []
+        comments: [],
+        reprint_info: {}
     };
     mongodb.open(function (err, db) {
         if (err) {
@@ -106,14 +109,14 @@ Post.prototype.getOne = function (name, day, title, callback) {
                     collection.update(
                         {
                             "name": name,
-                            "time.day":day,
-                            "title":title
+                            "time.day": day,
+                            "title": title
                         },
                         {
-                            $inc:{"pv":1}
-                        },function(err){
+                            $inc: {"pv": 1}
+                        }, function (err) {
                             mongodb.close();
-                            if(err){
+                            if (err) {
                                 return callback(err);
                             }
                         });
@@ -196,19 +199,54 @@ Post.prototype.remove = function (name, day, title, callback) {
                 mongodb.close();
                 return callback(err);
             }
-            var query = {
+            collection.findOne({
                 "name": name,
-                "title": title,
-                "time.day": day
-            };
-            collection.remove(query, {w: 1}, function (err) {
-                mongodb.close();
+                "time.day": day,
+                "title": title
+            }, function (req, doc) {
                 if (err) {
+                    mongodb.close();
                     return callback(err);
-                } else {
-                    return callback(null);
                 }
-            })
+                var reprint_from = "";
+                if (doc.reprint_info.reprint_from) {
+                    reprint_from = doc.reprint_info.reprint_from;
+                }
+                if (reprint_from != '') {
+                    collection.update({
+                        "name": reprint_from.name,
+                        "time.day": reprint_from.day,
+                        "title": reprint_from.title
+                    }, {
+                        $pull: {
+                            "reprint_info.reprint_to": {
+                                "name": name,
+                                "day": day,
+                                "title": title
+                            }
+                        }
+                    }, function (err) {
+                        if (err) {
+                            mongodb.close();
+                            return callback(err);
+                        }
+                    })
+                }
+                var query = {
+                    "name": name,
+                    "title": title,
+                    "time.day": day
+                };
+                collection.remove(query, {w: 1}, function (err) {
+                    mongodb.close();
+                    if (err) {
+                        return callback(err);
+                    } else {
+                        return callback(null);
+                    }
+                })
+            });
+
         })
     })
 };
@@ -255,7 +293,7 @@ Post.prototype.getTen = function (name, page, callback) {
 
 // 返回所有文档的存档信息
 Post.prototype.getArchive = function (callback) {
-//打开数据库
+    //打开数据库
     mongodb.open(function (err, db) {
         if (err) {
             mongodb.close();
@@ -285,7 +323,6 @@ Post.prototype.getArchive = function (callback) {
 
 //返回标签
 Post.prototype.getTags = function (callback) {
-    console.log(111);
     mongodb.open(function (err, db) {
         if (err) {
             mongodb.close();
@@ -333,29 +370,98 @@ Post.prototype.getTag = function (tag, callback) {
 };
 
 //查找
-Post.prototype.search=function(keyword,callback){
-    mongodb.open(function(err,db){
-        if(err){
+Post.prototype.search = function (keyword, callback) {
+    mongodb.open(function (err, db) {
+        if (err) {
             mongodb.close();
             return callback(err);
         }
-        db.collection('posts',function(err,collection){
-            if(err){
+        db.collection('posts', function (err, collection) {
+            if (err) {
                 mongodb.close();
                 return callback(err);
             }
-            var pattern=new RegExp(keyword,"i");
+            var pattern = new RegExp(keyword, "i");
             collection.find(
-                {"title":pattern},
-                {"name":1,"time":1,"title":1})
-                .sort({time:-1})
-                .toArray(function(err,docs){
+                {"title": pattern},
+                {"name": 1, "time": 1, "title": 1})
+                .sort({time: -1})
+                .toArray(function (err, docs) {
+                    mongodb.close();
+                    if (err) {
+                        return callback(err);
+                    }
+                    return callback(null, docs);
+                })
+        })
+    })
+};
+
+// 转载
+Post.prototype.reprint = function (reprint_from, reprint_to, callback) {
+    mongodb.open(function (err, db) {
+        if (err) {
+            mongodb.close();
+            return callback(err);
+        }
+        db.collection('posts', function (err, collection) {
+            if (err) {
                 mongodb.close();
-                if(err){
-                    return callback(err);
-                }
-                return callback(null,docs);
-            })
+                return callback(err);
+            }
+            collection.findOne(
+                {
+                    "name": reprint_from.name,
+                    "time.day": reprint_from.day,
+                    "title": reprint_from.title
+                }, function (err, doc) {
+                    if (err) {
+                        mongodb.close();
+                        return callback(err);
+                    }
+                    var date = new Date();
+                    var time = {
+                        date: date,
+                        year: date.getFullYear(),
+                        month: date.getFullYear() + "-" + (date.getMonth() + 1),
+                        day: date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate(),
+                        minute: date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + " " + date.getHours() + ":" + (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes())
+                    };
+                    delete doc._id;
+                    doc.name = reprint_to.name;
+                    doc.head = reprint_to.head;
+                    doc.time = time;
+                    doc.title = (doc.title.search(/[转载]/) > -1) ? doc.title : "[转载]" + doc.title;
+                    doc.comments = [];
+                    doc.reprint_info = {"reprint_from": reprint_from};
+                    doc.pv = 0;
+                    collection.update({
+                        "name": reprint_from.name,
+                        "time.day": reprint_from.day,
+                        "title": reprint_from.title
+                    }, {
+                        $push: {
+                            "reprint_info.reprint_to": {
+                                "name": doc.name,
+                                "day": time.day,
+                                "title": doc.title
+                            }
+                        }
+                    }, function (err) {
+                        if (err) {
+                            mongodb.close();
+                            return callback(err);
+                        }
+                    });
+                    collection.insert(doc, {safe: true}, function (err, post) {
+                        console.log(post['ops'][0]);
+                        mongodb.close();
+                        if (err) {
+                            return callback(err);
+                        }
+                        return callback(null, post['ops'][0]);
+                    })
+                })
         })
     })
 };

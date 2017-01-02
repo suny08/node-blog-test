@@ -9,6 +9,9 @@ var setting=require('./setting');
 var session=require('express-session');
 var mongoStore=require('connect-mongo')(session);
 var flash=require('connect-flash');
+var fs=require('fs');
+var accessLog=fs.createWriteStream('access_log',{flags:'a'});
+var errorLog=fs.createWriteStream('error_log',{flags:'a'});
 var app = express();
 app.use(session({
   secret:setting.cookieSecret,
@@ -20,7 +23,7 @@ app.use(session({
     port:setting.port,
     url:"mongodb://localhost:27017"
   })
-}))
+}));
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -29,10 +32,15 @@ app.use(flash());
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
+app.use(logger({stream:accessLog}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(function(err,req,res,next){
+  var meta='['+new Date()+'] '+req.url+'\n';
+  errorLog.write(meta+err.stack+'\n');
+});
 router(app);
 
 // catch 404 and forward to error handler
