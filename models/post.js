@@ -1,5 +1,5 @@
 var mongodb = require('./db');
-var markdown = require('markdown').markdown;
+// var markdown = require('markdown').markdown;
 function Post(name, head, title, tags, post) {
     this.name = name;
     this.title = title;
@@ -74,9 +74,9 @@ Post.prototype.getAll = function (name, callback) {
                 if (err) {
                     return callback(err);
                 } else {
-                    doces.forEach(function (doc) {
-                        doc.post = markdown.toHTML(doc.post);
-                    });
+                    // doces.forEach(function (doc) {
+                    //     doc.post = markdown.toHTML(doc.post);
+                    // });
                     return callback(null, doces);
                 }
             });
@@ -120,10 +120,10 @@ Post.prototype.getOne = function (name, day, title, callback) {
                                 return callback(err);
                             }
                         });
-                    doc.post = markdown.toHTML(doc.post);
-                    doc.comments.forEach(function (comment) {
-                        comment.content = markdown.toHTML(comment.content);
-                    })
+                    // doc.post = markdown.toHTML(doc.post);
+                    // doc.comments.forEach(function (comment) {
+                    //     comment.content = markdown.toHTML(comment.content);
+                    // })
                 }
                 return callback(null, doc);
             });
@@ -281,9 +281,9 @@ Post.prototype.getTen = function (name, page, callback) {
                     if (err) {
                         return callback(err);
                     }
-                    docs.forEach(function (doc) {
-                        doc.post = markdown.toHTML(doc.post);
-                    });
+                    // docs.forEach(function (doc) {
+                    //     doc.post = markdown.toHTML(doc.post);
+                    // });
                     return callback(null, docs, total);
                 });
             });

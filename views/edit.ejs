@@ -7,7 +7,23 @@
   <input type="text" name="tag2" value="<%= post.tags[1] %>" disabled="disabled"/>
   <input type="text" name="tag3" value="<%= post.tags[2] %>" disabled="disabled"/><br/>
   正文：<br/>
-  <textarea name="post" rows="20" cols="100"><%= post.post %></textarea><br/>
+  <textarea name="post" id="editor_id" rows="20" cols="100"><%= post.post %></textarea><br/>
   <input type="submit" value="保存修改">
 </form>
+<script charset="utf-8" src="/kindeditor/kindeditor.js"></script>
+<script charset="utf-8" src="/kindeditor/lang/zh_CN.js"></script>
+<script>
+var editor;
+KindEditor.ready(function(K) {
+        editor = K.create('#editor_id', {
+          resizeType : 1,
+          allowPreviewEmoticons : false,
+          allowImageUpload : true,
+          items : [
+            'fontname', 'fontsize', '|', 'forecolor', 'hilitecolor', 'bold', 'italic', 'underline',
+            'removeformat', '|', 'justifyleft', 'justifycenter', 'justifyright', 'insertorderedlist',
+            'insertunorderedlist', '|', 'emoticons', 'image', 'link']
+        });
+});
+</script>
 <% include footer %>
